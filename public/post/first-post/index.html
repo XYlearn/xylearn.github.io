@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head><script src="/livereload.js?port=4637&mindelay=10&v=2" data-no-instant defer></script>
+    
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-182953793-1', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <title>&#34;第一篇&#34;博客 - XYlearn&#39; Site</title>
+    
+    <meta name="description" content="这个博客小站已经不是我的第一个个人博客了，之前的博客要么写着写着挂了，要么就是写了一两篇就停笔了。希望这个博客站能帮助我自己养成记录和分享的">
+    <meta name="author" content="">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.11.1/tocbot.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/an-old-hope.min.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/style.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/custom.css" rel="stylesheet">
+    
+    <link rel="apple-touch-icon" href="https://blog.xylearn.site/apple-touch-icon.png">
+    <link rel="icon" href="https://blog.xylearn.site/favicon.ico">
+    <meta name="generator" content="Hugo 0.74.3" />
+    
+    
+    
+    <script src="https://kit.fontawesome.com/b26fcad8a0.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
+    <script>
+      function setTheme() {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.body.classList.add('dark');
+          return;
+        }
+
+        const time = new Date();
+        const prev = localStorage.getItem('date');
+        const date = String(time.getMonth() + 1) + '.' + String(time.getDate());
+
+        const now = time.getTime();
+        let sunrise;
+        let sunset;
+
+        function setBodyClass() {
+          if (now > sunrise && now < sunset) return;
+          document.body.classList.add('dark');
+        }
+
+        if (date !== prev) {
+          fetch('https://api.ipgeolocation.io/astronomy?apiKey=5ed37d85103e4defa5df4c5298ed5215')
+            .then((res) => res.json())
+            .then((data) => {
+              sunrise = data.sunrise.split(':').map(Number);
+              sunset = data.sunset.split(':').map(Number);
+            })
+            .catch(() => {
+              sunrise = [7, 0];
+              sunset = [19, 0];
+            })
+            .finally(() => {
+              sunrise = time.setHours(sunrise[0], sunrise[1], 0);
+              sunset = time.setHours(sunset[0], sunset[1], 0);
+              setBodyClass();
+              localStorage.setItem('sunrise', sunrise);
+              localStorage.setItem('sunset', sunset);
+            });
+          localStorage.setItem('date', date);
+        } else {
+          sunrise = Number(localStorage.getItem('sunrise'));
+          sunset = Number(localStorage.getItem('sunset'));
+          setBodyClass();
+        }
+      }
+    </script>
+  </head>
+  <body class="single">
+    <script>
+      setTheme();
+    </script>
+    <header class="header">
+      <nav class="nav">
+        <p class="logo"><a href="https://blog.xylearn.site/">XYlearn&#39; Site</a></p>
+        <ul class="menu">
+          <li>
+            <a href="/post/">Blog</a>
+          </li>
+          <li>
+            <a href="/tags/">Tags</a>
+          </li>
+          <li>
+            <a href="/index.xml">RSS</a>
+          </li>
+          <li>
+            <a href="/about/">About</a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <main class="main">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.11.1/tocbot.min.js"></script>
+<article class="post-single">
+  <header class="post-header">
+    <h1 class="post-title">&#34;第一篇&#34;博客</h1>
+    <div class="post-meta"><span class="post-meta-author">
+</span>
+<span class="post-meta-date">
+  <span class="post-meta-date-pub">
+    <i class="far fa-calendar"></i>
+    <time>2020-08-31 23:54</time>
+  </span>
+  <span class="post-meta-divider">·</span>
+  <span class="post-meta-date-pub">
+    <i class="far fa-calendar-check"></i>
+    <time>2020-08-31 23:54</time>
+  </span>
+</span>
+<span class="post-meta-divider">·</span>
+
+<span class="post-meta-wc">
+  <i class="far fa-file-word"></i>
+  <span>89</span>
+</span>
+<span class="post-meta-divider">·</span>
+
+<span class="post-meta-rt">
+  <i class="far fa-clock"></i>
+  <span>1 min</span>
+</span>
+
+
+      
+      <div class="post-meta-tags">
+      </div>
+    </div>
+  </header>
+  <div class="post-toc"></div>
+  <div class="post-content article-post">
+    <p>这个博客小站已经不是我的第一个个人博客了，之前的博客要么写着写着挂了，要么就是写了一两篇就停笔了。希望这个博客站能帮助我自己养成记录和分享的习惯，让我自己或者是其他人都有所收获。</p>
+
+  </div>
+  <footer class="post-footer">
+  </footer>
+</article>
+
+<script type="text/javascript">
+  if (!/(iPhone|iPad|iPod|iOS|Android)/i.test(navigator.userAgent)) { 
+    tocbot.init({
+      
+      tocSelector: '.post-toc',
+      
+      contentSelector: '.post-content',
+      
+      headingSelector: 'h1, h2, h3, h4',
+      
+      positionFixedSelector: '.post-toc',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+      scrollSmooth: true,
+    });
+  }
+</script></main>
+<footer class="footer">
+  <span>&copy; 2020 <a href="https://blog.xylearn.site/">XYlearn&#39; Site</a></span>
+  <span>&middot;</span>
+  <span>Powered by <a href="https://gohugo.io/" rel="noopener" target="_blank">Hugo️️</a>️</span>
+  <span>&middot;</span>
+  <span>Theme️ <a href="https://github.com/nanxiaobei/hugo-paper" rel="noopener" target="_blank">Paper</a></span>
+</footer>
+<script src="https://blog.xylearn.site/highlight.min.js"></script>
+<script>
+  hljs.initHighlightingOnLoad();
+</script>
+<script src="https://blog.xylearn.site/copy.js"></script>
+</body>
+</html>
+

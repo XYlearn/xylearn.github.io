@@ -1,0 +1,97 @@
+enableGoogleAnalytics: true
+googleAnalytics: "UA-182953793-1"
+baseURL: https://blog.xylearn.site/
+languageCode: zh-CN
+defaultContentLanguage: zh
+hasCJKLanguage: true
+title: XYlearn' Site
+author: XYlearn
+copyright: "Copyright © 2020-2020 XHY. All rights reserved."
+theme: paper
+
+taxonomies:
+  tag: tags
+
+menu:
+  main:
+  - identifier: blog
+    name: Blog
+    url: /post/
+    weight: 1
+  - identifier: tags
+    name: Tags
+    url: /tags/
+    weight: 2
+  - identifier: rss
+    name: RSS
+    url: /index.xml
+    weight: 3
+  - identifier: about
+    name: About
+    url: /about/
+    weight: 4
+
+markup:
+  asciidocExt:
+    attributes: {}
+    backend: html5
+    extensions: []
+    failureLevel: fatal
+    noHeaderOrFooter: true
+    preserveTOC: false
+    safeMode: unsafe
+    sectionNumbers: false
+    trace: false
+    verbose: false
+    workingFolderCurrent: false
+  blackFriday:
+    angledQuotes: false
+    extensions: null
+    extensionsMask: null
+    footnoteAnchorPrefix: ""
+    footnoteReturnLinkContents: ""
+    fractions: true
+    hrefTargetBlank: true
+    latexDashes: true
+    nofollowLinks: false
+    noreferrerLinks: false
+    plainIDAnchors: true
+    skipHTML: false
+    smartDashes: true
+    smartypants: true
+    smartypantsQuotesNBSP: false
+    taskLists: true
+  defaultMarkdownHandler: goldmark
+  goldmark:
+    extensions:
+      definitionList: true
+      footnote: true
+      linkify: true
+      strikethrough: true
+      table: true
+      taskList: true
+      typographer: true
+    parser:
+      attribute: true
+      autoHeadingID: true
+      autoHeadingIDType: github
+    renderer:
+      hardWraps: false
+      unsafe: false
+      xhtml: false
+  highlight:
+    anchorLineNos: false
+    codeFences: true
+    guessSyntax: false
+    hl_Lines: ""
+    lineAnchors: ""
+    lineNoStart: 1
+    lineNos: true
+    lineNumbersInTable: false
+    noClasses: false
+    style: monokai
+    tabWidth: 2
+  tableOfContents:
+    endLevel: 3
+    ordered: false
+    startLevel: 2
