@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
+  <head><script src="/livereload.js?port=4637&mindelay=10&v=2" data-no-instant defer></script>
     
 <script type="application/javascript">
 var doNotTrack = false;
@@ -128,7 +128,7 @@ if (!doNotTrack) {
 
 <span class="post-meta-wc">
   <i class="far fa-file-word"></i>
-  <span>1841</span>
+  <span>1958</span>
 </span>
 <span class="post-meta-divider">·</span>
 
@@ -184,20 +184,36 @@ if (!doNotTrack) {
 <span class="ln">2</span>mkdir -p proc etc sys
 <span class="ln">3</span><span class="c1"># bin linuxrc sbin usr usr/bin usr/sbin这几个目录在_install目录下都已经创建了</span>
 </code></pre></div><p>然后可以创建init文件，写入开机启动脚本：</p>
-<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="ln"> 1</span><span class="c1"># init</span>
-<span class="ln"> 2</span><span class="nb">echo</span> <span class="s2">&#34;[.] Beginning of init&#34;</span>
-<span class="ln"> 3</span>mkdir /tmp
-<span class="ln"> 4</span>mount -t proc none /proc
-<span class="ln"> 5</span>mount -t sysfs none /sys
-<span class="ln"> 6</span>mount -t debugfs none /sys/kernel/debug
-<span class="ln"> 7</span>mount -t tmpfs none /tmp
-<span class="ln"> 8</span><span class="nb">echo</span> <span class="s2">&#34;Hi XYlearn&#34;</span>
-<span class="ln"> 9</span><span class="c1"># 使用普通用户权限</span>
-<span class="ln">10</span>setsid /bin/cttyhack setuidgid <span class="m">1000</span> /bin/sh
-<span class="ln">11</span><span class="c1"># exec /bin/sh # 使用root权限</span>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="ln">1</span><span class="c1"># 使用普通用户权限</span>
+<span class="ln">2</span>setsid /bin/cttyhack setuidgid <span class="m">1000</span> /bin/sh
+<span class="ln">3</span><span class="c1"># exec /bin/sh # 使用root权限</span>
+</code></pre></div><p>将以下内容写入<code>etc/inittab</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="ln">1</span>::sysinit:/etc/init.d/rcS
+<span class="ln">2</span>::askfirst:/bin/sh
+<span class="ln">3</span>::ctrlaltdel:/sbin/reboot
+<span class="ln">4</span>::shutdown:/sbin/swapoff -a
+<span class="ln">5</span>::shutdown:/bin/umount -a -r
+<span class="ln">6</span>::restart:/sbin/init
+</code></pre></div><p>创建<code>etc/init.d/rcS</code>，并且给它可执行权限<code>chmod +x etc/init.d/rcS</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="ln"> 1</span><span class="cp">#!/bin/sh
+</span><span class="ln"> 2</span><span class="cp"></span>mkdir /tmp
+<span class="ln"> 3</span>mount -t proc none /proc
+<span class="ln"> 4</span>mount -t sysfs none /sys
+<span class="ln"> 5</span>mount -t debugfs none /sys/kernel/debug
+<span class="ln"> 6</span>mount -t tmpfs none /tmp
+<span class="ln"> 7</span>mount -n -t tmpfs none /dev
+<span class="ln"> 8</span>mknod -m <span class="m">622</span> /dev/console c <span class="m">5</span> <span class="m">1</span>
+<span class="ln"> 9</span>mknod -m <span class="m">666</span> /dev/null c <span class="m">1</span> <span class="m">3</span>
+<span class="ln">10</span>mknod -m <span class="m">666</span> /dev/zero c <span class="m">1</span> <span class="m">5</span>
+<span class="ln">11</span>mknod -m <span class="m">666</span> /dev/ptmx c <span class="m">5</span> <span class="m">2</span>
+<span class="ln">12</span>mknod -m <span class="m">666</span> /dev/tty c <span class="m">5</span> <span class="m">0</span> <span class="c1"># &lt;--</span>
+<span class="ln">13</span>mknod -m <span class="m">666</span> /dev/ttyS0 c <span class="m">4</span> <span class="m">64</span>
+<span class="ln">14</span>mknod -m <span class="m">444</span> /dev/random c <span class="m">1</span> <span class="m">8</span>
+<span class="ln">15</span>mknod -m <span class="m">444</span> /dev/urandom c <span class="m">1</span> <span class="m">9</span>
+<span class="ln">16</span>mdev -s
 </code></pre></div><p>在_install目录中放入其他想放的文件后就可以打包文件系统镜像了。</p>
 <div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="ln">1</span><span class="nb">cd</span> <span class="nv">$BUSYBOX_SOURCE_DIR</span>/_install
-<span class="ln">2</span>find . <span class="p">|</span> cpio -o --format<span class="o">=</span>newc &gt; ./initrd.img
+<span class="ln">2</span>find . <span class="p">|</span> cpio -o --format<span class="o">=</span>newc &gt; ../initrd.img
 </code></pre></div><p>有了文件系统就可以用qemu启动内核了</p>
 <div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="ln">1</span>qemu-system-x86_64 -kernel arch/x86_64/boot/bzImage -nographic -append <span class="s2">&#34;console=ttyS0&#34;</span> -initrd initrd.img -m <span class="m">128</span>
 </code></pre></div><p>稍微解释一下几个参数，<code>-kernel</code>参数指定系统镜像，<code>-nographic</code>表示在纯命令行运行和<code>&quot;console=ttyS0&quot;</code>一起使用使用启动界面作为终端，<code>-append</code>指定了传给linux kernel的参数，<code>-initrd</code>指定了初始化文件系统，<code>-m</code>指定了内存大小(MB)。还可以使用<code>-S</code>开启gdb调试，用<code>-s</code>来在1234端口监听gdb（相当于<code>-gdb tcp::1234</code>）。</p>

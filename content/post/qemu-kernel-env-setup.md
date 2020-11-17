@@ -67,24 +67,44 @@ mkdir -p proc etc sys
 ```
 然后可以创建init文件，写入开机启动脚本：
 ```bash
-# init
-echo "[.] Beginning of init"
+# 使用普通用户权限
+setsid /bin/cttyhack setuidgid 1000 /bin/sh
+# exec /bin/sh # 使用root权限
+```
+将以下内容写入`etc/inittab`
+```bash
+::sysinit:/etc/init.d/rcS
+::askfirst:/bin/sh
+::ctrlaltdel:/sbin/reboot
+::shutdown:/sbin/swapoff -a
+::shutdown:/bin/umount -a -r
+::restart:/sbin/init
+```
+创建`etc/init.d/rcS`，并且给它可执行权限`chmod +x etc/init.d/rcS`
+```bash
+#!/bin/sh
 mkdir /tmp
 mount -t proc none /proc
 mount -t sysfs none /sys
 mount -t debugfs none /sys/kernel/debug
 mount -t tmpfs none /tmp
-echo "Hi XYlearn"
-# 使用普通用户权限
-setsid /bin/cttyhack setuidgid 1000 /bin/sh
-# exec /bin/sh # 使用root权限
+mount -n -t tmpfs none /dev
+mknod -m 622 /dev/console c 5 1
+mknod -m 666 /dev/null c 1 3
+mknod -m 666 /dev/zero c 1 5
+mknod -m 666 /dev/ptmx c 5 2
+mknod -m 666 /dev/tty c 5 0 # <--
+mknod -m 666 /dev/ttyS0 c 4 64
+mknod -m 444 /dev/random c 1 8
+mknod -m 444 /dev/urandom c 1 9
+mdev -s
 ```
 
 在_install目录中放入其他想放的文件后就可以打包文件系统镜像了。
 
 ```bash
 cd $BUSYBOX_SOURCE_DIR/_install
-find . | cpio -o --format=newc > ./initrd.img
+find . | cpio -o --format=newc > ../initrd.img
 ```
 
 有了文件系统就可以用qemu启动内核了
