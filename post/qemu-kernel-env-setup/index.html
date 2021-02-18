@@ -1,0 +1,58 @@
+<!doctype html><html lang=zh-cn><head><script type=application/javascript>var doNotTrack=false;if(!doNotTrack){window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;ga('create','UA-182953793-1','auto');ga('send','pageview');}</script><script async src=https://www.google-analytics.com/analytics.js></script><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Qemu Busybox Kernel环境搭建小记 - XYlearn' Site</title><meta name=description content="前言 本文目的是搭建一个Linxu Kernel的调试环境，所需要用到的工具分别有Qemu和Busybox。其中Qemu是一个强大的cpu模拟器"><meta name=author content><link href=https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.11.1/tocbot.css rel=stylesheet><link href=https://blog.xylearn.site/an-old-hope.min.css rel=stylesheet><link href=https://blog.xylearn.site/style.css rel=stylesheet><link href=https://blog.xylearn.site/custom.css rel=stylesheet><link href=https://blog.xylearn.site/all.min.css rel=stylesheet><link rel=apple-touch-icon href=https://blog.xylearn.site/apple-touch-icon.png><link rel=icon href=https://blog.xylearn.site/favicon.ico><meta name=generator content="Hugo 0.79.1"><script src=https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js></script><script>function setTheme(){if(window.matchMedia('(prefers-color-scheme: dark)').matches){document.body.classList.add('dark');return;}
+const time=new Date();const prev=localStorage.getItem('date');const date=String(time.getMonth()+1)+'.'+String(time.getDate());const now=time.getTime();let sunrise;let sunset;function setBodyClass(){if(now>sunrise&&now<sunset)return;document.body.classList.add('dark');}
+if(date!==prev){fetch('https://api.ipgeolocation.io/astronomy?apiKey=5ed37d85103e4defa5df4c5298ed5215').then((res)=>res.json()).then((data)=>{sunrise=data.sunrise.split(':').map(Number);sunset=data.sunset.split(':').map(Number);}).catch(()=>{sunrise=[7,0];sunset=[19,0];}).finally(()=>{sunrise=time.setHours(sunrise[0],sunrise[1],0);sunset=time.setHours(sunset[0],sunset[1],0);setBodyClass();localStorage.setItem('sunrise',sunrise);localStorage.setItem('sunset',sunset);});localStorage.setItem('date',date);}else{sunrise=Number(localStorage.getItem('sunrise'));sunset=Number(localStorage.getItem('sunset'));setBodyClass();}}</script></head><body class=single><script>setTheme();</script><header class=header><nav class=nav><p class=logo><a href=https://blog.xylearn.site/>XYlearn' Site</a></p><ul class=menu><li><a href=/post/>Blog</a></li><li><a href=/tags/>Tags</a></li><li><a href=/index.xml>RSS</a></li><li><a href=/about/>About</a></li></ul></nav></header><main class=main><script src=https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.11.1/tocbot.min.js></script><article class=post-single><header class=post-header><h1 class=post-title>Qemu Busybox Kernel环境搭建小记</h1><div class=post-meta><span class=post-meta-author></span><span class=post-meta-date><span class=post-meta-date-pub><i class="far fa-calendar"></i><time>2020-11-13 22:04</time></span>
+<span class=post-meta-divider>·</span>
+<span class=post-meta-date-pub><i class="far fa-calendar-check"></i><time>2020-11-13 22:04</time></span></span>
+<span class=post-meta-divider>·</span>
+<span class=post-meta-wc><i class="far fa-file-word"></i><span>1958</span></span>
+<span class=post-meta-divider>·</span>
+<span class=post-meta-rt><i class="far fa-clock"></i><span>4 min</span></span><div class=post-meta-tags><ul class=post-tags><li><a href=https://blog.xylearn.site/tags/kernel>Kernel</a></li><li><a href=https://blog.xylearn.site/tags/qemu>Qemu</a></li></ul></div></div></header><div class=post-toc></div><div class="post-content article-post"><h2 id=前言>前言</h2><p>本文目的是搭建一个Linxu Kernel的调试环境，所需要用到的工具分别有Qemu和Busybox。其中Qemu是一个强大的cpu模拟器，它可以模拟各种主流cpu的执行，同时还提供了很多便利的功能。Busybox是一个集成了众多Unix工具的精简工具集，比较适合在如嵌入式系统这样的环境下使用。本文将记录一次Kernel构建，Busybox构建，Qemu安装，模拟器运行的过程</p><h2 id=kernel构建>Kernel构建</h2><p>首先获取Linux的git仓库，如果知道自己想获取的分支版本，则可以使用-b指定。如果想要获取某一个特定commit的内核版本而不想要其他git内容，则可以前往<code>https://github.com/&lt;repo_name>/tree/&lt;commit_sha></code>通过Download Zip下载源码包。比如想要下载linux <code>5805992184f97b7797f24b74d511825f8992861e</code>这个commit的代码树，则可以前往<code>https://github.com/torvalds/linux/tree/5805992184f97b7797f24b74d511825f8992861e</code>下载。</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span><span class=c1># Get Full Repo</span>
+<span class=ln>2</span>git clone https://github.com/torvalds/linux.git
+<span class=ln>3</span><span class=c1># Get Specific Branch</span>
+<span class=ln>4</span>git clone -b v4.14 https://github.com/torvalds/linux.git
+</code></pre></div><p>在构建linux image前需要用Kconfig对Linux进行配置，Linux内核会提供一些config选择，比如默认可以使用x86_defconfig，这些可选的config可以通过<code>make help</code>看到。当选择好使用什么config时可以使用<code>make $(CONFIG_NAME)</code>进行配置。也可以使用<code>make menuconfig</code>进行菜单配置或是直接修改<code>.config</code>。</p><p>在配置完成后，就可以使用make来进行内核构建了。这部分可能会遇到很多问题，当遇到编译问题时可以上网搜索，或是检查自己编译器的类型(gcc/clang)或是版本是否满足对应版本内核的编译需求。使用交叉编译的话需要提前将交叉编译工具链加入环境变量<code>PATH</code>中。</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span><span class=c1># An example for making linux image</span>
+<span class=ln>2</span>make -j16
+</code></pre></div><p>编译完成后通常可以在<code>arch/$ARCH/boot</code>中找到编译得到的image，默认是<code>bzImage</code>。</p><h2 id=busybox构建>Busybox构建</h2><p>Busybox的源代码可以从<a href=https://busybox.net>其官网</a>下载。由于Busybox和Linux一样也使用了Kbuild/Kconfig来进行配置管理，所以其编译过程是类似的。</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span><span class=c1># An example for making busybox image</span>
+<span class=ln>2</span>make menuconf
+<span class=ln>3</span>make -j16 <span class=o>&amp;&amp;</span> make install
+</code></pre></div><p>在上面的<code>make menuconfig</code>中要注意勾选<code>Build static binary (no shared libs)</code>选项，来在构建过程中国呢使用静态链接而非动态链接。该选项位于<code>Settings</code>中的<code>Build Options</code>下。</p><p>构建完成后在<code>_install</code>目录下能够看到一系列的文件夹，这是我们后续创建文件系统的基础。</p><h2 id=qemu安装>Qemu安装</h2><p>直接安装qemu就可以使用。但是为了加速或是调试kvm相关的内核功能，可能需要使用到qemu-kvm。</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span>sudo apt-get update
+<span class=ln>2</span>sudo apt-get install -y qemu-kvm qemu
+<span class=ln>3</span><span class=c1># （可选）也可以使用Virt-Manager来管理kvm虚拟机</span>
+<span class=ln>4</span>sudo apt-get install virt-manager virt-viewer libvirt-bin
+</code></pre></div><h2 id=qemu启动>Qemu启动</h2><p>为了让内核成功启动，还需要为其创建一个初始化的文件系统。最简单的方法是使用mkinitramfs。</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span>mkinitramfs -o initrd.img
+</code></pre></div><p>通过这种方式创建的文件系统包含了基本的目录和可执行程序。但是这样创建的文件系统可以用的程序太少了，而且无法自定义文件系统中的其他内容。所以下面使用<code>cpio</code>自建文件系统。</p><p>首先在之前构建好的busybox安装目录中创建必要的文件夹</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span><span class=nb>cd</span> <span class=nv>$BUSYBOX_SOURCE_DIR</span>/_install
+<span class=ln>2</span>mkdir -p proc etc sys
+<span class=ln>3</span><span class=c1># bin linuxrc sbin usr usr/bin usr/sbin这几个目录在_install目录下都已经创建了</span>
+</code></pre></div><p>然后可以创建init文件，写入开机启动脚本：</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span><span class=c1># 使用普通用户权限</span>
+<span class=ln>2</span>setsid /bin/cttyhack setuidgid <span class=m>1000</span> /bin/sh
+<span class=ln>3</span><span class=c1># exec /bin/sh # 使用root权限</span>
+</code></pre></div><p>将以下内容写入<code>etc/inittab</code></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span>::sysinit:/etc/init.d/rcS
+<span class=ln>2</span>::askfirst:/bin/sh
+<span class=ln>3</span>::ctrlaltdel:/sbin/reboot
+<span class=ln>4</span>::shutdown:/sbin/swapoff -a
+<span class=ln>5</span>::shutdown:/bin/umount -a -r
+<span class=ln>6</span>::restart:/sbin/init
+</code></pre></div><p>创建<code>etc/init.d/rcS</code>，并且给它可执行权限<code>chmod +x etc/init.d/rcS</code></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln> 1</span><span class=cp>#!/bin/sh
+</span><span class=ln> 2</span><span class=cp></span>mkdir /tmp
+<span class=ln> 3</span>mount -t proc none /proc
+<span class=ln> 4</span>mount -t sysfs none /sys
+<span class=ln> 5</span>mount -t debugfs none /sys/kernel/debug
+<span class=ln> 6</span>mount -t tmpfs none /tmp
+<span class=ln> 7</span>mount -n -t tmpfs none /dev
+<span class=ln> 8</span>mknod -m <span class=m>622</span> /dev/console c <span class=m>5</span> <span class=m>1</span>
+<span class=ln> 9</span>mknod -m <span class=m>666</span> /dev/null c <span class=m>1</span> <span class=m>3</span>
+<span class=ln>10</span>mknod -m <span class=m>666</span> /dev/zero c <span class=m>1</span> <span class=m>5</span>
+<span class=ln>11</span>mknod -m <span class=m>666</span> /dev/ptmx c <span class=m>5</span> <span class=m>2</span>
+<span class=ln>12</span>mknod -m <span class=m>666</span> /dev/tty c <span class=m>5</span> <span class=m>0</span> <span class=c1># &lt;--</span>
+<span class=ln>13</span>mknod -m <span class=m>666</span> /dev/ttyS0 c <span class=m>4</span> <span class=m>64</span>
+<span class=ln>14</span>mknod -m <span class=m>444</span> /dev/random c <span class=m>1</span> <span class=m>8</span>
+<span class=ln>15</span>mknod -m <span class=m>444</span> /dev/urandom c <span class=m>1</span> <span class=m>9</span>
+<span class=ln>16</span>mdev -s
+</code></pre></div><p>在_install目录中放入其他想放的文件后就可以打包文件系统镜像了。</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span><span class=nb>cd</span> <span class=nv>$BUSYBOX_SOURCE_DIR</span>/_install
+<span class=ln>2</span>find . <span class=p>|</span> cpio -o --format<span class=o>=</span>newc &gt; ../initrd.img
+</code></pre></div><p>有了文件系统就可以用qemu启动内核了</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=ln>1</span>qemu-system-x86_64 -kernel arch/x86_64/boot/bzImage -nographic -append <span class=s2>&#34;console=ttyS0&#34;</span> -initrd initrd.img -m <span class=m>128</span>
+</code></pre></div><p>稍微解释一下几个参数，<code>-kernel</code>参数指定系统镜像，<code>-nographic</code>表示在纯命令行运行和<code>"console=ttyS0"</code>一起使用使用启动界面作为终端，<code>-append</code>指定了传给linux kernel的参数，<code>-initrd</code>指定了初始化文件系统，<code>-m</code>指定了内存大小(MB)。还可以使用<code>-S</code>开启gdb调试，用<code>-s</code>来在1234端口监听gdb（相当于<code>-gdb tcp::1234</code>）。</p><h2 id=总结>总结</h2><p>简单记录了搭建一些kernel调试环境的过程。环境搭建其实是一件比较烦人的事情。</p></div><footer class=post-footer></footer></article><script type=text/javascript>if(!/(iPhone|iPad|iPod|iOS|Android)/i.test(navigator.userAgent)){tocbot.init({tocSelector:'.post-toc',contentSelector:'.post-content',headingSelector:'h1, h2, h3, h4',positionFixedSelector:'.post-toc',positionFixedClass:'is-position-fixed',fixedSidebarOffset:'auto',scrollSmooth:true,});}</script></main><footer class=footer><span>&copy; 2021 <a href=https://blog.xylearn.site/>XYlearn' Site</a></span>
+<span>&#183;</span>
+<span>Powered by <a href=https://gohugo.io/ rel=noopener target=_blank>Hugo️️</a>️</span>
+<span>&#183;</span>
+<span>Theme️ <a href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>Paper</a></span></footer><script src=https://blog.xylearn.site/highlight.min.js></script><script>hljs.initHighlightingOnLoad();</script><script src=https://blog.xylearn.site/copy.js></script></body></html>
