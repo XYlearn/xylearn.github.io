@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-182953793-1', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <title>Fuchsia 的进程间通信 - XYlearn&#39; Site</title>
+    
+    <meta name="description" content="Fuchsia 的进程间通信 引言 Fuchsia是Google推出的一种微内核系统，专门为设备互联的场景设计。在Fuchsia系统内，component是最">
+    <meta name="author" content="">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.11.1/tocbot.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/an-old-hope.min.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/style.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/custom.css" rel="stylesheet">
+    <link href="https://blog.xylearn.site/all.min.css" rel="stylesheet">
+    
+    <link rel="apple-touch-icon" href="https://blog.xylearn.site/apple-touch-icon.png">
+    <link rel="icon" href="https://blog.xylearn.site/favicon.ico">
+    <meta name="generator" content="Hugo 0.83.1" />
+    
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js"></script>
+    <script>
+      function setTheme() {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.body.classList.add('dark');
+          return;
+        }
+
+        const time = new Date();
+        const prev = localStorage.getItem('date');
+        const date = String(time.getMonth() + 1) + '.' + String(time.getDate());
+
+        const now = time.getTime();
+        let sunrise;
+        let sunset;
+
+        function setBodyClass() {
+          if (now > sunrise && now < sunset) return;
+          document.body.classList.add('dark');
+        }
+
+        if (date !== prev) {
+          fetch('https://api.ipgeolocation.io/astronomy?apiKey=5ed37d85103e4defa5df4c5298ed5215')
+            .then((res) => res.json())
+            .then((data) => {
+              sunrise = data.sunrise.split(':').map(Number);
+              sunset = data.sunset.split(':').map(Number);
+            })
+            .catch(() => {
+              sunrise = [7, 0];
+              sunset = [19, 0];
+            })
+            .finally(() => {
+              sunrise = time.setHours(sunrise[0], sunrise[1], 0);
+              sunset = time.setHours(sunset[0], sunset[1], 0);
+              setBodyClass();
+              localStorage.setItem('sunrise', sunrise);
+              localStorage.setItem('sunset', sunset);
+            });
+          localStorage.setItem('date', date);
+        } else {
+          sunrise = Number(localStorage.getItem('sunrise'));
+          sunset = Number(localStorage.getItem('sunset'));
+          setBodyClass();
+        }
+      }
+    </script>
+  </head>
+  <body class="single">
+    <script>
+      setTheme();
+    </script>
+    <header class="header">
+      <nav class="nav">
+        <p class="logo"><a href="https://blog.xylearn.site/">XYlearn&#39; Site</a></p>
+        <ul class="menu">
+          <li>
+            <a href="/post/">Blog</a>
+          </li>
+          <li>
+            <a href="/tags/">Tags</a>
+          </li>
+          <li>
+            <a href="/index.xml">RSS</a>
+          </li>
+          <li>
+            <a href="/about/">About</a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+    <main class="main">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.11.1/tocbot.min.js"></script>
+<article class="post-single">
+  <header class="post-header">
+    <h1 class="post-title">Fuchsia 的进程间通信</h1>
+    <div class="post-meta"><span class="post-meta-author">
+</span>
+<span class="post-meta-date">
+  <span class="post-meta-date-pub">
+    <i class="far fa-calendar"></i>
+    <time>2021-06-14 21:26</time>
+  </span>
+  <span class="post-meta-divider">·</span>
+  <span class="post-meta-date-pub">
+    <i class="far fa-calendar-check"></i>
+    <time>2021-06-14 21:26</time>
+  </span>
+</span>
+<span class="post-meta-divider">·</span>
+
+<span class="post-meta-wc">
+  <i class="far fa-file-word"></i>
+  <span>3784</span>
+</span>
+<span class="post-meta-divider">·</span>
+
+<span class="post-meta-rt">
+  <i class="far fa-clock"></i>
+  <span>8 min</span>
+</span>
+
+
+      
+      <div class="post-meta-tags">
+          <ul class="post-tags">
+          <li><a href="https://blog.xylearn.site/tags/kernel">Kernel</a></li>
+          </ul>
+      </div>
+    </div>
+  </header>
+  <div class="post-toc"></div>
+  <div class="post-content article-post">
+    <h1 id="fuchsia-的进程间通信">Fuchsia 的进程间通信</h1>
+<h2 id="引言">引言</h2>
+<p>Fuchsia是Google推出的一种微内核系统，专门为设备互联的场景设计。在Fuchsia系统内，component是最小执行单元，几乎所有的应用、系统服务乃至驱动都作为component运行。可想而知，在系统运行过程中有大量的进程运行，并且会存在大量的进程间通信。因此这篇文章想从kernel源代码层面分析一下Fuchsia的底层进程间通信是如何运作的。</p>
+<h2 id="channel">Channel</h2>
+<p>Fuchsia底层使用channel来完成进程间的通信。Channel实际上是一个双工的消息管道，它属于Zircon（Fuchsia的内核）的内核对象，用户可以通过channel的handle（用户持有的对内核对象的引用）从channel的一端向另一端发送消息或从channel的一端接收另一端的消息。</p>
+<p>Channel在Zircon内核中作为<code>ChannelDispatcher</code>对象存储，包含以下字段</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln"> 1</span><span class="k">class</span> <span class="nc">ChannelDispatcher</span> <span class="k">final</span>
+<span class="ln"> 2</span>    <span class="o">:</span> <span class="k">public</span> <span class="n">PeeredDispatcher</span><span class="o">&lt;</span><span class="n">ChannelDispatcher</span><span class="p">,</span> <span class="n">ZX_DEFAULT_CHANNEL_RIGHTS</span><span class="o">&gt;</span> <span class="p">{</span>
+<span class="ln"> 3</span>  <span class="c1">// ...
+</span><span class="ln"> 4</span><span class="c1"></span>  <span class="c1">// 用于存储消息列表
+</span><span class="ln"> 5</span><span class="c1"></span>  <span class="n">MessageList</span> <span class="n">messages_</span> <span class="nf">TA_GUARDED</span><span class="p">(</span><span class="n">get_lock</span><span class="p">());</span>
+<span class="ln"> 6</span>
+<span class="ln"> 7</span>  <span class="c1">// 记录消息列表长度的历史最大值
+</span><span class="ln"> 8</span><span class="c1"></span>  <span class="kt">uint64_t</span> <span class="n">max_message_count_</span> <span class="nf">TA_GUARDED</span><span class="p">(</span><span class="n">get_lock</span><span class="p">())</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="ln"> 9</span>
+<span class="ln">10</span>  <span class="c1">// 用于追踪能够调用（比如write）这个channel的进程
+</span><span class="ln">11</span><span class="c1"></span>  <span class="n">zx_koid_t</span> <span class="n">owner_</span> <span class="nf">TA_GUARDED</span><span class="p">(</span><span class="n">get_lock</span><span class="p">())</span> <span class="o">=</span> <span class="n">ZX_KOID_INVALID</span><span class="p">;</span>
+<span class="ln">12</span>
+<span class="ln">13</span>  <span class="c1">// 上一个事务ID（transaction id），用于分配新的无冲突txid，txid用于将写入的message
+</span><span class="ln">14</span><span class="c1"></span>  <span class="c1">// 和MessageWaiter对应上
+</span><span class="ln">15</span><span class="c1"></span>  <span class="kt">uint32_t</span> <span class="n">txid_</span> <span class="nf">TA_GUARDED</span><span class="p">(</span><span class="n">get_lock</span><span class="p">())</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="ln">16</span>
+<span class="ln">17</span>  <span class="c1">// channel中waiter的列表，waiter用于异步等待
+</span><span class="ln">18</span><span class="c1"></span>  <span class="n">WaiterList</span> <span class="n">waiters_</span> <span class="nf">TA_GUARDED</span><span class="p">(</span><span class="n">get_lock</span><span class="p">());</span>
+<span class="ln">19</span><span class="p">};</span>
+</code></pre></div><p>与channel相关的系统调用有如下几个：</p>
+<ul>
+<li><code>zx_channel_create()</code>: 创建一个新的channel</li>
+<li><code>zx_channel_write()</code>: 向channel写入一个消息</li>
+<li><code>zx_channel_read()</code>: 从channel中读取一个消息</li>
+<li><code>zx_channel_call()</code>: 异步地发送消息和接受回复</li>
+<li><code>zx_object_wait_one()</code>: 等待内核对象的信号</li>
+</ul>
+<p>下文将结合代码对这几个系统调用进行简单分析。</p>
+<h3 id="创建channel">创建Channel</h3>
+<p>普通进程可以通过<code>zx_channel_create()</code>这个系统调用创建一个channel，这个过程比较简单，主要就是创建两个相互独立的<code>ChannelDispatcher</code>，并将它们相互绑定为peer。在创建之前会根据policy进行检查：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln">1</span><span class="c1">// sys_channel_create()
+</span><span class="ln">2</span><span class="c1"></span>  <span class="k">auto</span> <span class="n">up</span> <span class="o">=</span> <span class="n">ProcessDispatcher</span><span class="o">::</span><span class="n">GetCurrent</span><span class="p">();</span>
+<span class="ln">3</span>  <span class="n">zx_status_t</span> <span class="n">res</span> <span class="o">=</span> <span class="n">up</span><span class="o">-&gt;</span><span class="n">EnforceBasicPolicy</span><span class="p">(</span><span class="n">ZX_POL_NEW_CHANNEL</span><span class="p">);</span>
+<span class="ln">4</span>  <span class="k">if</span> <span class="p">(</span><span class="n">res</span> <span class="o">!=</span> <span class="n">ZX_OK</span><span class="p">)</span>
+<span class="ln">5</span>    <span class="k">return</span> <span class="n">res</span><span class="p">;</span>
+</code></pre></div><h3 id="写入channel">写入Channel</h3>
+<p>在创建channel后，进程可以通过<code>zx_channel_write()</code>系统调用向channel中写入message，其代码如下。其流程简单来说就是通过<code>MessagePacket::Create()</code>创建<code>MessagePacket</code>对象，并将用户数据和用户的handle存储到<code>MessagePacket</code>中，在创建过程中内核会限制<code>MessagePacket</code>中字节的长度小于<code>kMaxMessageSize</code>(65536)，handle的数量小于<code>kMaxMessageHandles</code>(64)。创建完成后会调用<code>ChannelDispatcher::Write()</code>来将message发送给peer，即channel的另一端，在此过程中会校验channel的<code>owner</code>是否是当前进程，以及peer是否未被关闭。发送message是通过调用peer的<code>ChannelDispatcher::WriteSelf()</code>来实现的。</p>
+<p>这个函数主要有两部分处理逻辑。第一部分代码是检查是否有waiter正在等待这一消息，如果存在则立即将消息交给waiter处理；第二部分代码则是将消息压入消息列表中。</p>
+<p>如下所示的第一部分代码实际上处理了后面要提到的<code>sys_channel_call()</code>这类异步的channel通信机制。在通信过程中内核使用<code>MessageWaiter</code>来处理channel中的的异步消息，为了让<code>ChannelDispatcher</code>知道哪一个<code>MessageWaiter</code>和哪一个<code>MessagePacket</code>相对应，内核使用一个<code>txid</code>来唯一表示异步通信的transaction（事务）。所以代码判断是否有具有相同<code>txid</code>的waiter正在等待正要写入<code>msg</code>，如果有责将waiter从等待列表中移出，并调用<code>waiter.Deliver()</code>进行消息分发。</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln"> 1</span><span class="c1">// ChannelDispatcher::WriteSelf() part1
+</span><span class="ln"> 2</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">waiters_</span><span class="p">.</span><span class="n">is_empty</span><span class="p">())</span> <span class="p">{</span>
+<span class="ln"> 3</span>    <span class="n">zx_txid_t</span> <span class="n">txid</span> <span class="o">=</span> <span class="n">msg</span><span class="o">-&gt;</span><span class="n">get_txid</span><span class="p">();</span>
+<span class="ln"> 4</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">waiter</span> <span class="p">:</span> <span class="n">waiters_</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln"> 5</span>      <span class="k">if</span> <span class="p">(</span><span class="n">waiter</span><span class="p">.</span><span class="n">get_txid</span><span class="p">()</span> <span class="o">==</span> <span class="n">txid</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln"> 6</span>        <span class="n">waiters_</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">waiter</span><span class="p">);</span>
+<span class="ln"> 7</span>        <span class="n">waiter</span><span class="p">.</span><span class="n">Deliver</span><span class="p">(</span><span class="n">ktl</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">msg</span><span class="p">));</span>
+<span class="ln"> 8</span>        <span class="k">return</span><span class="p">;</span>
+<span class="ln"> 9</span>      <span class="p">}</span>
+<span class="ln">10</span>    <span class="p">}</span>
+<span class="ln">11</span>  <span class="p">}</span>
+</code></pre></div><p>第二部分代码将消息压入消息列表中。这里目前的fuchsia采用了一个临时的fix来限制消息列表的长度不超过<code>kMaxPendingMessageCount</code>(目前是3500)，当消息列表长度超过了这个限制，那么内核会向当前进程发送一个<code>ZX_EXCP_POLICY_CODE_CHANNEL_FULL_WRITE</code> signal，这是一个“architecture exception”，如果进程未对这个signal进行处理，那么进程会退出。
+在写完之后内核通过<code>UpdateStateLocked()</code>更新state为可读状态。值得一提的是在创建</p>
+<pre><code>// ChannelDispatcher::WriteSelf() part2
+  messages_.push_back(ktl::move(msg));
+  if (messages_.size() &gt; max_message_count_) {
+    max_message_count_ = messages_.size();
+  }
+
+  if (messages_.size() == kMaxPendingMessageCount / 2) {
+    auto process = ProcessDispatcher::GetCurrent();
+    char pname[ZX_MAX_NAME_LEN];
+    process-&gt;get_name(pname);
+    printf(&quot;KERN: warning! channel (%zu) has %zu messages (%s) (write).\n&quot;, get_koid(),
+           messages_.size(), pname);
+  } else if (messages_.size() &gt; kMaxPendingMessageCount) {
+    auto process = ProcessDispatcher::GetCurrent();
+    char pname[ZX_MAX_NAME_LEN];
+    process-&gt;get_name(pname);
+    printf(&quot;KERN: channel (%zu) has %zu messages (%s) (write). Raising exception\n&quot;, get_koid(),
+           messages_.size(), pname);
+    Thread::Current::SignalPolicyException(ZX_EXCP_POLICY_CODE_CHANNEL_FULL_WRITE, 0u);
+    kcounter_add(channel_full, 1);
+  }
+
+  UpdateStateLocked(0u, ZX_CHANNEL_READABLE);
+</code></pre><h3 id="读取channel">读取Channel</h3>
+<p>进程可以调用<code>zx_channel_read()</code>读取消息。如果<code>ChannelDispatcher</code>的消息列表为空，那么有两种情况，一种是peer已经关闭，另一种是peer未关闭但是无消息，根据这两种情况分别返回失败状态<code>ZX_ERR_PEER_CLOSED</code>和<code>ZX_ERR_SHOULD_WAIT</code>。如果消息列表中有数据，则判断message的size和handle数量是否超过用户要读取的长度，如果超过则返回错误状态。如果一切正常，则拷贝message的数据和handle到用户buffer中，并将字节数和handle数量更新到用户buffer中，在读取之后若消息列表为空，则内核通过<code>UpdateStateLocked</code>更新state为不可读状态。</p>
+<h3 id="调用channel">调用channel</h3>
+<p>Zircon提供了<code>zx_channel_call()</code>系统调用来发送一次消息并且等待消息相应。它相当于调用<code>zx_channel_write()</code> <code>zx_object_wait_one()</code>和<code>zx_channel_read()</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln"> 1</span><span class="n">__EXPORT</span> <span class="n">zx_status_t</span> <span class="nf">_zx_channel_call</span><span class="p">(</span><span class="n">zx_handle_t</span> <span class="n">handle</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">options</span><span class="p">,</span> <span class="n">zx_time_t</span> <span class="n">deadline</span><span class="p">,</span>
+<span class="ln"> 2</span>                                      <span class="k">const</span> <span class="n">zx_channel_call_args_t</span><span class="o">*</span> <span class="n">args</span><span class="p">,</span> <span class="kt">uint32_t</span><span class="o">*</span> <span class="n">actual_bytes</span><span class="p">,</span>
+<span class="ln"> 3</span>                                      <span class="kt">uint32_t</span><span class="o">*</span> <span class="n">actual_handles</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln"> 4</span>  <span class="n">zx_status_t</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SYSCALL_zx_channel_call_noretry</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="n">deadline</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span>
+<span class="ln"> 5</span>                                                       <span class="n">actual_bytes</span><span class="p">,</span> <span class="n">actual_handles</span><span class="p">);</span>
+<span class="ln"> 6</span>  <span class="k">while</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">ZX_ERR_INTERNAL_INTR_RETRY</span><span class="p">))</span> <span class="p">{</span>
+<span class="ln"> 7</span>    <span class="n">status</span> <span class="o">=</span> <span class="n">SYSCALL_zx_channel_call_finish</span><span class="p">(</span><span class="n">deadline</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">actual_bytes</span><span class="p">,</span> <span class="n">actual_handles</span><span class="p">);</span>
+<span class="ln"> 8</span>  <span class="p">}</span>
+<span class="ln"> 9</span>  <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+<span class="ln">10</span><span class="p">}</span>
+</code></pre></div><p><code>zx_channel_call_noretry()</code>会将用户输入包装到<code>MessagePacket</code>中，然后调用<code>ChannelDispatcher::Call()</code>来处理。<code>ChannelDispatcher::Call()</code>会首先检查函数是否被重入，因为重入会导致channel call的状态异常。</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln">1</span><span class="c1">// zx_channel_call_noretry()-&gt;ChannelDispatcher::Call()
+</span><span class="ln">2</span><span class="c1"></span><span class="k">if</span> <span class="p">(</span><span class="n">unlikely</span><span class="p">(</span><span class="n">waiter</span><span class="o">-&gt;</span><span class="n">BeginWait</span><span class="p">(</span><span class="n">fbl</span><span class="o">::</span><span class="n">RefPtr</span><span class="p">(</span><span class="k">this</span><span class="p">))</span> <span class="o">!=</span> <span class="n">ZX_OK</span><span class="p">))</span> <span class="p">{</span>
+<span class="ln">3</span>    <span class="c1">// If a thread tries BeginWait&#39;ing twice, the VDSO contract around retrying
+</span><span class="ln">4</span><span class="c1"></span>    <span class="c1">// channel calls has been violated.  Shoot the misbehaving process.
+</span><span class="ln">5</span><span class="c1"></span>    <span class="n">ProcessDispatcher</span><span class="o">::</span><span class="n">GetCurrent</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">Kill</span><span class="p">(</span><span class="n">ZX_TASK_RETCODE_VDSO_KILL</span><span class="p">);</span>
+<span class="ln">6</span>    <span class="k">return</span> <span class="n">ZX_ERR_BAD_STATE</span><span class="p">;</span>
+<span class="ln">7</span>  <span class="p">}</span>
+</code></pre></div><p>接着会检查channel的owner以及peer是否关闭。之后channel会为线程对应的waiter和msg设置一个txid以方便构造reply和waiter处理reply。</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln">1</span><span class="c1">// zx_channel_call_noretry()-&gt;ChannelDispatcher::Call()
+</span><span class="ln">2</span><span class="c1"></span>  <span class="nl">alloc_txid</span><span class="p">:</span>
+<span class="ln">3</span>    <span class="n">zx_txid_t</span> <span class="n">txid</span> <span class="o">=</span> <span class="p">(</span><span class="o">++</span><span class="n">txid_</span><span class="p">)</span> <span class="o">|</span> <span class="mh">0x80000000</span><span class="p">;</span>
+<span class="ln">4</span>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">waiter</span> <span class="p">:</span> <span class="n">waiters_</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln">5</span>      <span class="k">if</span> <span class="p">(</span><span class="n">waiter</span><span class="p">.</span><span class="n">get_txid</span><span class="p">()</span> <span class="o">==</span> <span class="n">txid</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln">6</span>        <span class="k">goto</span> <span class="n">alloc_txid</span><span class="p">;</span>
+<span class="ln">7</span>      <span class="p">}</span>
+<span class="ln">8</span>    <span class="p">}</span>
+</code></pre></div><p>接着dispatcher依次将waiter压入waiter列表中和调用<code>ChannelDispatcher::WriteSelf()</code>将msg写入peer的消息列表中。最终系统调用将调用<code>ChannelDispatcher::ResumeInterruptedCall()</code>等待消息直至收到消息、等待超时或是被中断。</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="ln"> 1</span><span class="c1">// zx_channel_call_noretry()-&gt;
+</span><span class="ln"> 2</span><span class="c1"></span><span class="n">zx_status_t</span> <span class="n">ChannelDispatcher</span><span class="o">::</span><span class="n">ResumeInterruptedCall</span><span class="p">(</span><span class="n">MessageWaiter</span><span class="o">*</span> <span class="n">waiter</span><span class="p">,</span>
+<span class="ln"> 3</span>                                                     <span class="k">const</span> <span class="n">Deadline</span><span class="o">&amp;</span> <span class="n">deadline</span><span class="p">,</span>
+<span class="ln"> 4</span>                                                     <span class="n">MessagePacketPtr</span><span class="o">*</span> <span class="n">reply</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln"> 5</span>  <span class="n">canary_</span><span class="p">.</span><span class="n">Assert</span><span class="p">();</span>
+<span class="ln"> 6</span>  <span class="p">{</span>
+<span class="ln"> 7</span>    <span class="n">ThreadDispatcher</span><span class="o">::</span><span class="n">AutoBlocked</span> <span class="n">by</span><span class="p">(</span><span class="n">ThreadDispatcher</span><span class="o">::</span><span class="n">Blocked</span><span class="o">::</span><span class="n">CHANNEL</span><span class="p">);</span>
+<span class="ln"> 8</span>    <span class="n">zx_status_t</span> <span class="n">status</span> <span class="o">=</span> <span class="n">waiter</span><span class="o">-&gt;</span><span class="n">Wait</span><span class="p">(</span><span class="n">deadline</span><span class="p">);</span>
+<span class="ln"> 9</span>    <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">ZX_ERR_INTERNAL_INTR_RETRY</span><span class="p">)</span> <span class="p">{</span>
+<span class="ln">10</span>      <span class="c1">// 如果被中断，返回但是不清除waiter
+</span><span class="ln">11</span><span class="c1"></span>      <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+<span class="ln">12</span>    <span class="p">}</span>
+<span class="ln">13</span>  <span class="p">}</span>
+<span class="ln">14</span>
+<span class="ln">15</span>  <span class="p">{</span>
+<span class="ln">16</span>    <span class="n">Guard</span><span class="o">&lt;</span><span class="n">Mutex</span><span class="o">&gt;</span> <span class="n">guard</span><span class="p">{</span><span class="n">get_lock</span><span class="p">()};</span>
+<span class="ln">17</span>
+<span class="ln">18</span>    <span class="c1">// 如果等到消息，则消息被写入reply中
+</span><span class="ln">19</span><span class="c1"></span>    <span class="n">zx_status_t</span> <span class="n">status</span> <span class="o">=</span> <span class="n">waiter</span><span class="o">-&gt;</span><span class="n">EndWait</span><span class="p">(</span><span class="n">reply</span><span class="p">);</span>
+<span class="ln">20</span>    <span class="c1">// 在一些其他情况下waiter可能已经接收到message并被删除，此时status不为
+</span><span class="ln">21</span><span class="c1"></span>    <span class="c1">// ZX_ERR_TIMED_OUT，而如果超时需要在这移出waiter。
+</span><span class="ln">22</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="n">ZX_ERR_TIMED_OUT</span><span class="p">)</span>
+<span class="ln">23</span>      <span class="n">waiters_</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="o">*</span><span class="n">waiter</span><span class="p">);</span>
+<span class="ln">24</span>    <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+<span class="ln">25</span>  <span class="p">}</span>
+<span class="ln">26</span><span class="p">}</span>
+</code></pre></div><p>从上述代码我们可以知道在等待消息的时候系统调用有可能被中断返回<code>ZX_ERR_INTERNAL_INTR_RETRY</code>，为处理这种情况，系统会调用<code>zx_channel_call_finish()</code>，该函数主要也是调用<code>ChannelDispatcher::ResumeInterruptedCall()</code>等待消息。无论是<code>zx_channel_call_noretry()</code>还是<code>zx_channel_call_finish()</code>在收到reply后都会将消息写回用户空间。至此一次消息的同步发送接收就完成了。</p>
+<h2 id="小结">小结</h2>
+<p>本文简单地分析了Fuchsia内核中的进程间通信机制 —— channel。在阅读源代码时我们可以发现，handle是Zircon内核与用户沟通的桥梁，内核不会关注进程间通信的双方分别是谁，而只关注进程持有的handle是否允许进程对内核对象进行读写，以及读写操作本身。事实上Zircon的channel机制只是为进程间通信提供了一个最基本的手段，component间通信的访问控制还需要系统框架层的支持。</p>
+<p>此外channel机制有一个问题是当写入的消息多于读出的消息时，pending message数量会增加，从而消息列表会增长。如果对message列表长度不加限制会耗尽内核的内存资源。虽然Google通过设定了一个消息列表长度上限临时解决了这个问题，但是极端情况下每一个channel还是可以占用<code>3500*65536</code>字节，约为220MB的内存，如果一个进程创建了多个channel，那么它还是可以占用大量的系统资源。</p>
+
+  </div>
+  <footer class="post-footer">
+  </footer>
+</article>
+
+<script type="text/javascript">
+  if (!/(iPhone|iPad|iPod|iOS|Android)/i.test(navigator.userAgent)) { 
+    tocbot.init({
+      
+      tocSelector: '.post-toc',
+      
+      contentSelector: '.post-content',
+      
+      headingSelector: 'h1, h2, h3, h4',
+      
+      positionFixedSelector: '.post-toc',
+      positionFixedClass: 'is-position-fixed',
+      fixedSidebarOffset: 'auto',
+      scrollSmooth: true,
+    });
+  }
+</script></main>
+<footer class="footer">
+  <span>&copy; 2021 <a href="https://blog.xylearn.site/">XYlearn&#39; Site</a></span>
+  <span>&middot;</span>
+  <span>Powered by <a href="https://gohugo.io/" rel="noopener" target="_blank">Hugo️️</a>️</span>
+  <span>&middot;</span>
+  <span>Theme️ <a href="https://github.com/nanxiaobei/hugo-paper" rel="noopener" target="_blank">Paper</a></span>
+</footer>
+<script src="https://blog.xylearn.site/highlight.min.js"></script>
+<script>
+  hljs.initHighlightingOnLoad();
+</script>
+<script src="https://blog.xylearn.site/copy.js"></script>
+</body>
+</html>
+

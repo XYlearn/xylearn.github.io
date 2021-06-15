@@ -7,10 +7,15 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-CN</language>
     <copyright>Copyright © 2020-2020 XHY. All rights reserved.</copyright>
-    <lastBuildDate>Fri, 13 Nov 2020 22:04:00 +0800</lastBuildDate>
-    
-	<atom:link href="https://blog.xylearn.site/index.xml" rel="self" type="application/rss+xml" />
-    
+    <lastBuildDate>Mon, 14 Jun 2021 21:26:36 +0800</lastBuildDate><atom:link href="https://blog.xylearn.site/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Fuchsia 的进程间通信</title>
+      <link>https://blog.xylearn.site/post/fuchsia-channel/</link>
+      <pubDate>Mon, 14 Jun 2021 21:26:36 +0800</pubDate>
+      
+      <guid>https://blog.xylearn.site/post/fuchsia-channel/</guid>
+      <description>Fuchsia 的进程间通信 引言 Fuchsia是Google推出的一种微内核系统，专门为设备互联的场景设计。在Fuchsia系统内，component是最</description>
+    </item>
     
     <item>
       <title>Qemu Busybox Kernel环境搭建小记</title>
